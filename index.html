@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D Dinosaur Runner</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #d9edf0;
+      color: #152026;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background: #d9edf0;
+    }
+
+    #game {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .hud {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: none;
+      color: #17242a;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    .brand {
+      display: grid;
+      gap: 4px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(22px, 4vw, 42px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 0;
+      max-width: 520px;
+      color: #40545b;
+      font-size: clamp(13px, 2vw, 16px);
+    }
+
+    .scoreboard {
+      min-width: 154px;
+      display: grid;
+      gap: 4px;
+      justify-items: end;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score {
+      font-size: clamp(24px, 5vw, 48px);
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .best {
+      color: #40545b;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      pointer-events: none;
+    }
+
+    .panel {
+      width: min(420px, calc(100vw - 32px));
+      max-width: calc(100vw - 32px);
+      border: 1px solid rgba(18, 31, 36, 0.14);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 18px 48px rgba(31, 47, 55, 0.18);
+      padding: 20px;
+      text-align: center;
+      backdrop-filter: blur(14px);
+      pointer-events: auto;
+    }
+
+    .panel[hidden] {
+      display: none;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .panel p {
+      margin: 0 0 16px;
+      color: #435860;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 18px;
+      background: #152026;
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #d34f37;
+    }
+
+    .touch-controls {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 18px;
+      display: none;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .touch-controls button {
+      pointer-events: auto;
+      min-width: 0;
+      min-height: 56px;
+      background: rgba(21, 32, 38, 0.82);
+      backdrop-filter: blur(12px);
+    }
+
+    @media (max-width: 740px), (pointer: coarse) {
+      .hud {
+        top: 14px;
+        left: 14px;
+        right: 14px;
+      }
+
+      .brand p {
+        display: none;
+      }
+
+      .brand h1 {
+        font-size: 22px;
+      }
+
+      .scoreboard {
+        min-width: 84px;
+      }
+
+      .overlay {
+        justify-items: start;
+      }
+
+      .panel {
+        width: min(340px, calc(100vw - 32px));
+        margin-left: 0;
+      }
+
+      .touch-controls {
+        display: grid;
+        right: auto;
+        width: min(358px, calc(100vw - 32px));
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="3D dinosaur runner game"></canvas>
+
+  <div class="hud" aria-live="polite">
+    <div class="brand">
+      <h1>3D Dino Run</h1>
+      <p>Space หรือ ↑ เพื่อกระโดด, ↓ เพื่อหมอบ, R เพื่อเริ่มใหม่</p>
+    </div>
+    <div class="scoreboard">
+      <div class="score" id="score">00000</div>
+      <div class="best" id="best">BEST 00000</div>
+    </div>
+  </div>
+
+  <div class="overlay">
+    <section class="panel" id="startPanel">
+      <h2>พร้อมวิ่ง</h2>
+      <p>หลบกระบองเพชรและนกให้ได้นานที่สุด ความเร็วจะเพิ่มขึ้นเรื่อย ๆ</p>
+      <div class="actions">
+        <button id="startButton">เริ่มเกม</button>
+      </div>
+    </section>
+
+    <section class="panel" id="gameOverPanel" hidden>
+      <h2>ชนแล้ว</h2>
+      <p id="finalScore">คะแนน 00000</p>
+      <div class="actions">
+        <button id="restartButton">เล่นอีกครั้ง</button>
+        <button class="secondary" id="shareButton">คัดลอกคะแนน</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="touch-controls">
+    <button id="duckButton">หมอบ</button>
+    <button id="jumpButton">กระโดด</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from "https://unpkg.com/three@0.165.0/build/three.module.js";
+
+    const canvas = document.querySelector("#game");
+    const scoreEl = document.querySelector("#score");
+    const bestEl = document.querySelector("#best");
+    const startPanel = document.querySelector("#startPanel");
+    const gameOverPanel = document.querySelector("#gameOverPanel");
+    const finalScoreEl = document.querySelector("#finalScore");
+    const startButton = document.querySelector("#startButton");
+    const restartButton = document.querySelector("#restartButton");
+    const shareButton = document.querySelector("#shareButton");
+    const jumpButton = document.querySelector("#jumpButton");
+    const duckButton = document.querySelector("#duckButton");
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xd9edf0);
+    scene.fog = new THREE.Fog(0xd9edf0, 22, 68);
+
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 120);
+    camera.position.set(7.5, 5.2, 9.4);
+    camera.lookAt(0, 1.3, 0);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x72919a, 2.2);
+    scene.add(hemiLight);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+    sun.position.set(8, 14, 7);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -18;
+    sun.shadow.camera.right = 18;
+    sun.shadow.camera.top = 18;
+    sun.shadow.camera.bottom = -18;
+    scene.add(sun);
+
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xf0d087, roughness: 0.92 });
+    const ground = new THREE.Mesh(new THREE.BoxGeometry(100, 0.18, 7.5), groundMaterial);
+    ground.position.set(0, -0.1, 0);
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const laneLineMaterial = new THREE.MeshStandardMaterial({ color: 0xc89452, roughness: 0.9 });
+    const laneLines = [];
+    for (let i = 0; i < 28; i += 1) {
+      const stone = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.04, 0.07), laneLineMaterial);
+      stone.position.set(i * 2.25 - 28, 0.035, -2.85);
+      stone.receiveShadow = true;
+      scene.add(stone);
+      laneLines.push(stone);
+    }
+
+    const cloudMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+    const clouds = [];
+    function createCloud(x, y, z, scale) {
+      const cloud = new THREE.Group();
+      const parts = [
+        [0, 0, 0, 1.3, 0.55, 0.55],
+        [0.55, 0.1, 0, 0.85, 0.72, 0.55],
+        [-0.55, 0.03, 0, 0.75, 0.55, 0.55],
+      ];
+      parts.forEach(([px, py, pz, sx, sy, sz]) => {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), cloudMaterial);
+        puff.scale.set(sx, sy, sz);
+        puff.position.set(px, py, pz);
+        cloud.add(puff);
+      });
+      cloud.position.set(x, y, z);
+      cloud.scale.setScalar(scale);
+      scene.add(cloud);
+      clouds.push(cloud);
+    }
+
+    createCloud(11, 6.3, -9, 1.1);
+    createCloud(-7, 7.2, -12, 0.82);
+    createCloud(22, 5.8, -10, 0.9);
+
+    const dino = new THREE.Group();
+    scene.add(dino);
+
+    const dinoMaterial = new THREE.MeshStandardMaterial({ color: 0x3d8f62, roughness: 0.72 });
+    const bellyMaterial = new THREE.MeshStandardMaterial({ color: 0xf4e2aa, roughness: 0.82 });
+    const darkMaterial = new THREE.MeshStandardMaterial({ color: 0x182126, roughness: 0.72 });
+    const toeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 });
+
+    function box(name, size, position, material, parent = dino) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), material);
+      mesh.name = name;
+      mesh.position.copy(position);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    }
+
+    const body = box("body", new THREE.Vector3(1.1, 1.35, 0.72), new THREE.Vector3(0, 0.9, 0), dinoMaterial);
+    const belly = box("belly", new THREE.Vector3(0.68, 0.8, 0.75), new THREE.Vector3(0.18, 0.78, 0.02), bellyMaterial);
+    const head = box("head", new THREE.Vector3(0.8, 0.68, 0.68), new THREE.Vector3(0.52, 1.7, 0), dinoMaterial);
+    const snout = box("snout", new THREE.Vector3(0.58, 0.34, 0.5), new THREE.Vector3(0.98, 1.62, 0), dinoMaterial);
+    const tail = box("tail", new THREE.Vector3(0.98, 0.32, 0.38), new THREE.Vector3(-0.88, 1.02, 0), dinoMaterial);
+    tail.rotation.z = -0.42;
+    const eye = box("eye", new THREE.Vector3(0.09, 0.09, 0.08), new THREE.Vector3(0.74, 1.84, 0.35), darkMaterial);
+    const arm = box("arm", new THREE.Vector3(0.42, 0.13, 0.18), new THREE.Vector3(0.58, 1.12, 0.43), dinoMaterial);
+    const leftLeg = box("leftLeg", new THREE.Vector3(0.28, 0.68, 0.28), new THREE.Vector3(-0.28, 0.15, 0.2), dinoMaterial);
+    const rightLeg = box("rightLeg", new THREE.Vector3(0.28, 0.68, 0.28), new THREE.Vector3(0.32, 0.15, -0.2), dinoMaterial);
+    const leftFoot = box("leftFoot", new THREE.Vector3(0.5, 0.16, 0.3), new THREE.Vector3(-0.16, -0.25, 0.2), toeMaterial);
+    const rightFoot = box("rightFoot", new THREE.Vector3(0.5, 0.16, 0.3), new THREE.Vector3(0.44, -0.25, -0.2), toeMaterial);
+
+    dino.position.set(-4.2, 0.58, 0);
+
+    const cactusMaterial = new THREE.MeshStandardMaterial({ color: 0x28744a, roughness: 0.85 });
+    const birdMaterial = new THREE.MeshStandardMaterial({ color: 0x495963, roughness: 0.75 });
+    const obstacles = [];
+
+    function cactusPart(size, position, parent) {
+      const part = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), cactusMaterial);
+      part.position.copy(position);
+      part.castShadow = true;
+      part.receiveShadow = true;
+      parent.add(part);
+      return part;
+    }
+
+    function createCactus(x) {
+      const group = new THREE.Group();
+      const tall = 1 + Math.random() * 0.55;
+      cactusPart(new THREE.Vector3(0.42, tall, 0.42), new THREE.Vector3(0, tall / 2, 0), group);
+      if (Math.random() > 0.35) {
+        cactusPart(new THREE.Vector3(0.28, 0.62, 0.28), new THREE.Vector3(0.42, 0.75, 0), group);
+        cactusPart(new THREE.Vector3(0.48, 0.22, 0.24), new THREE.Vector3(0.28, 0.62, 0), group);
+      }
+      if (Math.random() > 0.55) {
+        cactusPart(new THREE.Vector3(0.25, 0.52, 0.25), new THREE.Vector3(-0.38, 0.62, 0), group);
+        cactusPart(new THREE.Vector3(0.42, 0.2, 0.22), new THREE.Vector3(-0.28, 0.5, 0), group);
+      }
+      group.position.set(x, 0, 0);
+      group.userData = { type: "cactus", radius: 0.7, height: tall };
+      scene.add(group);
+      obstacles.push(group);
+    }
+
+    function createBird(x) {
+      const group = new THREE.Group();
+      const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.32, 0.36), birdMaterial);
+      bodyMesh.castShadow = true;
+      group.add(bodyMesh);
+      const leftWing = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.08, 0.22), birdMaterial);
+      const rightWing = leftWing.clone();
+      leftWing.position.set(-0.34, 0.05, 0);
+      rightWing.position.set(0.34, 0.05, 0);
+      group.add(leftWing, rightWing);
+      group.position.set(x, 1.42 + Math.random() * 0.28, 0);
+      group.userData = { type: "bird", radius: 0.58, phase: Math.random() * Math.PI * 2, leftWing, rightWing };
+      scene.add(group);
+      obstacles.push(group);
+    }
+
+    const state = {
+      running: false,
+      gameOver: false,
+      velocityY: 0,
+      ducking: false,
+      score: 0,
+      best: Number(localStorage.getItem("dino3d-best") || 0),
+      speed: 8.5,
+      spawnTimer: 1.1,
+      elapsed: 0,
+      dayNight: 0,
+    };
+
+    bestEl.textContent = `BEST ${formatScore(state.best)}`;
+
+    function formatScore(value) {
+      return Math.floor(value).toString().padStart(5, "0");
+    }
+
+    function resetGame() {
+      obstacles.splice(0).forEach((obstacle) => scene.remove(obstacle));
+      state.running = true;
+      state.gameOver = false;
+      state.velocityY = 0;
+      state.ducking = false;
+      state.score = 0;
+      state.speed = 8.5;
+      state.spawnTimer = 0.9;
+      state.elapsed = 0;
+      state.dayNight = 0;
+      dino.position.set(-4.2, 0.58, 0);
+      dino.rotation.set(0, 0, 0);
+      startPanel.hidden = true;
+      gameOverPanel.hidden = true;
+      scoreEl.textContent = "00000";
+    }
+
+    function endGame() {
+      state.running = false;
+      state.gameOver = true;
+      state.best = Math.max(state.best, Math.floor(state.score));
+      localStorage.setItem("dino3d-best", String(state.best));
+      bestEl.textContent = `BEST ${formatScore(state.best)}`;
+      finalScoreEl.textContent = `คะแนน ${formatScore(state.score)}`;
+      gameOverPanel.hidden = false;
+    }
+
+    function jump() {
+      if (!state.running) {
+        resetGame();
+        return;
+      }
+      if (dino.position.y <= 0.61) {
+        state.velocityY = 8.8;
+      }
+    }
+
+    function setDuck(active) {
+      state.ducking = active && state.running && dino.position.y <= 0.62;
+    }
+
+    function spawnObstacle() {
+      if (Math.random() > 0.76 && state.score > 120) {
+        createBird(20);
+      } else {
+        createCactus(20);
+      }
+      state.spawnTimer = THREE.MathUtils.randFloat(0.72, 1.32) * Math.max(0.58, 9.5 / state.speed);
+    }
+
+    function updateDino(delta) {
+      state.velocityY -= 24 * delta;
+      dino.position.y += state.velocityY * delta;
+      if (dino.position.y < 0.58) {
+        dino.position.y = 0.58;
+        state.velocityY = 0;
+      }
+
+      const runPhase = state.elapsed * state.speed * 0.85;
+      const stride = Math.sin(runPhase) * 0.42;
+      leftLeg.rotation.x = stride;
+      rightLeg.rotation.x = -stride;
+      leftFoot.rotation.x = stride * 0.4;
+      rightFoot.rotation.x = -stride * 0.4;
+      arm.rotation.z = Math.sin(runPhase + 1.5) * 0.12;
+
+      const duckScaleY = state.ducking ? 0.68 : 1;
+      const duckRot = state.ducking ? -0.22 : 0;
+      dino.scale.y = THREE.MathUtils.lerp(dino.scale.y, duckScaleY, 12 * delta);
+      dino.rotation.z = THREE.MathUtils.lerp(dino.rotation.z, duckRot, 10 * delta);
+      head.position.y = THREE.MathUtils.lerp(head.position.y, state.ducking ? 1.35 : 1.7, 10 * delta);
+      snout.position.y = THREE.MathUtils.lerp(snout.position.y, state.ducking ? 1.26 : 1.62, 10 * delta);
+      eye.position.y = THREE.MathUtils.lerp(eye.position.y, state.ducking ? 1.49 : 1.84, 10 * delta);
+    }
+
+    function updateObstacles(delta) {
+      state.spawnTimer -= delta;
+      if (state.spawnTimer <= 0) {
+        spawnObstacle();
+      }
+
+      for (let i = obstacles.length - 1; i >= 0; i -= 1) {
+        const obstacle = obstacles[i];
+        obstacle.position.x -= state.speed * delta;
+
+        if (obstacle.userData.type === "bird") {
+          const flap = Math.sin(state.elapsed * 12 + obstacle.userData.phase) * 0.55;
+          obstacle.userData.leftWing.rotation.z = flap;
+          obstacle.userData.rightWing.rotation.z = -flap;
+          obstacle.position.y += Math.sin(state.elapsed * 6 + obstacle.userData.phase) * delta * 0.12;
+        }
+
+        if (obstacle.position.x < -14) {
+          scene.remove(obstacle);
+          obstacles.splice(i, 1);
+          continue;
+        }
+
+        if (collidesWithDino(obstacle)) {
+          endGame();
+        }
+      }
+    }
+
+    function collidesWithDino(obstacle) {
+      const dx = Math.abs(obstacle.position.x - dino.position.x);
+      if (dx > obstacle.userData.radius + 0.62) {
+        return false;
+      }
+
+      if (obstacle.userData.type === "bird") {
+        const dinoTop = dino.position.y + (state.ducking ? 0.76 : 1.68);
+        const dinoBottom = dino.position.y - 0.34;
+        const birdTop = obstacle.position.y + 0.2;
+        const birdBottom = obstacle.position.y - 0.2;
+        return dinoBottom < birdTop && dinoTop > birdBottom;
+      }
+
+      const dinoBottom = dino.position.y - 0.34;
+      const dinoTop = dino.position.y + (state.ducking ? 0.85 : 1.78);
+      return dinoBottom < obstacle.userData.height && dinoTop > 0.08;
+    }
+
+    function updateWorld(delta) {
+      laneLines.forEach((line) => {
+        line.position.x -= state.speed * delta;
+        if (line.position.x < -32) {
+          line.position.x += 63;
+        }
+      });
+
+      clouds.forEach((cloud) => {
+        cloud.position.x -= delta * (0.8 + state.speed * 0.03);
+        if (cloud.position.x < -18) {
+          cloud.position.x = 24 + Math.random() * 6;
+          cloud.position.y = 5.6 + Math.random() * 2;
+        }
+      });
+
+      state.dayNight += delta * 0.035;
+      const night = (Math.sin(state.dayNight) + 1) / 2;
+      const sky = new THREE.Color().lerpColors(new THREE.Color(0xd9edf0), new THREE.Color(0x27364c), night * 0.82);
+      const groundColor = new THREE.Color().lerpColors(new THREE.Color(0xf0d087), new THREE.Color(0x826d54), night * 0.65);
+      scene.background = sky;
+      scene.fog.color = sky;
+      groundMaterial.color = groundColor;
+      sun.intensity = THREE.MathUtils.lerp(2.6, 0.55, night);
+      hemiLight.intensity = THREE.MathUtils.lerp(2.2, 0.75, night);
+    }
+
+    function updateScore(delta) {
+      state.score += delta * state.speed * 6.4;
+      state.speed += delta * 0.28;
+      scoreEl.textContent = formatScore(state.score);
+    }
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      const delta = Math.min(clock.getDelta(), 0.033);
+      if (state.running) {
+        state.elapsed += delta;
+        updateScore(delta);
+        updateDino(delta);
+        updateObstacles(delta);
+        updateWorld(delta);
+      } else {
+        updateWorld(delta * 0.28);
+      }
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.position.set(width < 700 ? 7.4 : 7.5, width < 700 ? 5.9 : 5.2, width < 700 ? 12.5 : 9.4);
+      camera.lookAt(-0.8, 1.1, 0);
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "Space" || event.code === "ArrowUp") {
+        event.preventDefault();
+        jump();
+      }
+      if (event.code === "ArrowDown") {
+        event.preventDefault();
+        setDuck(true);
+      }
+      if (event.code === "KeyR") {
+        resetGame();
+      }
+    });
+
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "ArrowDown") {
+        setDuck(false);
+      }
+    });
+
+    startButton.addEventListener("click", resetGame);
+    restartButton.addEventListener("click", resetGame);
+    jumpButton.addEventListener("pointerdown", jump);
+    duckButton.addEventListener("pointerdown", () => setDuck(true));
+    duckButton.addEventListener("pointerup", () => setDuck(false));
+    duckButton.addEventListener("pointercancel", () => setDuck(false));
+    shareButton.addEventListener("click", async () => {
+      const text = `3D Dino Run: ${formatScore(state.score)} คะแนน`;
+      try {
+        await navigator.clipboard.writeText(text);
+        shareButton.textContent = "คัดลอกแล้ว";
+        window.setTimeout(() => {
+          shareButton.textContent = "คัดลอกคะแนน";
+        }, 1200);
+      } catch {
+        shareButton.textContent = "คัดลอกไม่ได้";
+        window.setTimeout(() => {
+          shareButton.textContent = "คัดลอกคะแนน";
+        }, 1200);
+      }
+    });
+
+    resize();
+    animate();
+  </script>
+</body>
+</html>
