@@ -673,8 +673,8 @@
     const menuHomePosition = new THREE.Vector3(-7.45, 1.62, 2.35);
     const menuGameOverPosition = new THREE.Vector3(-6.55, 1.62, 2.05);
     const menuExitPosition = new THREE.Vector3(-54, 1.62, 2.35);
-    const mobileMenuHomePosition = new THREE.Vector3(-2.55, 1.72, 1.25);
-    const mobileMenuGameOverPosition = new THREE.Vector3(-2.35, 1.72, 1.05);
+    const mobileMenuHomePosition = new THREE.Vector3(-7.1, 1.5, 1.65);
+    const mobileMenuGameOverPosition = new THREE.Vector3(-6.7, 1.5, 1.5);
     const mobileMenuExitPosition = new THREE.Vector3(-34, 1.72, 1.25);
     let activeMenuHomePosition = menuHomePosition.clone();
     let activeMenuGameOverPosition = menuGameOverPosition.clone();
@@ -1362,8 +1362,8 @@
       activeMenuHomePosition = (isMobile ? mobileMenuHomePosition : menuHomePosition).clone();
       activeMenuGameOverPosition = (isMobile ? mobileMenuGameOverPosition : menuGameOverPosition).clone();
       activeMenuExitPosition = (isMobile ? mobileMenuExitPosition : menuExitPosition).clone();
-      menuGroup.scale.setScalar(isMobile ? 0.82 : 1);
-      menuGroup.rotation.set(isMobile ? -0.03 : -0.05, isMobile ? 0.1 : 0.38, 0);
+      menuGroup.scale.setScalar(isMobile ? 0.5 : 1);
+      menuGroup.rotation.set(isMobile ? -0.02 : -0.05, isMobile ? 0.36 : 0.38, 0);
 
       if (!menuGroup.userData.exiting) {
         menuGroup.userData.target = (menuGroup.userData.mode === "gameover" ? activeMenuGameOverPosition : activeMenuHomePosition).clone();
